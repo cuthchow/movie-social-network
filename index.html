@@ -1,0 +1,255 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <title>Document</title>
+
+    <style>
+
+        body {
+            font-family: Helvetica;
+        }
+
+        li {
+            list-style: none;
+            line-height: 1.4em;
+        }
+
+        .detail {
+            width: 60%;
+            height: auto;
+            margin: auto;
+            border-top: .5px solid rgba(91, 96, 162, 0.769);
+            display: flex;
+            flex-direction: row;
+            padding: 15px;
+            box-sizing: border-box;
+            align-items: center;
+        }
+
+        .detail img {
+            height: 270px;
+
+        }
+
+        .head {
+            justify-content: space-around;
+        }
+
+
+        #search_tools {
+            width: 60%;
+            margin: auto;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+        }
+
+        #query {
+            width: 80%;
+            height: 50px;
+            font-size: 24px;
+        }
+
+        #query:focus {
+            outline: none;
+            padding: 8px;
+        }
+
+        button {
+            background: none;
+            outline: 0;  
+            font-size: 14px;
+            height: 50px;
+            box-sizing:border-box;
+            border: 1px solid rgba(181, 181, 181, 0.486);
+            border-radius: 5px;
+            padding: 9px;
+            transition: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+            transition-duration: 0.2s;
+            min-width: 100px;
+        }
+    
+        button:hover {
+            background-color: aliceblue;
+        }
+
+        .addToList {
+            float: right;
+        }
+
+        .alert {
+            color: red;
+            font-weight: 800;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id = 'search_tools'>
+        <button onclick = "nowPlaying()">Home</button>
+        <input type="text" id = 'query'>
+        <button id = 'submit' onclick="search()">Search</button>
+        <button onclick = "openWatchlist()">Watchlist</button>
+        <button onclick = "nowPlaying()">In Cinemas</button>
+    </div>
+    
+
+    <div class="container"></div>    
+    
+</body>
+
+
+    <script>
+
+        let storage = localStorage.getItem("watchList") ? localStorage.getItem("watchList") : ""
+        localStorage.setItem('watchList', storage);
+        let container = document.querySelector('.container')
+        const submit = document.querySelector('#submit')
+        const query = document.querySelector("#query")
+        
+
+        let url = "https://api.themoviedb.org/3/search/movie?api_key=187295f56b7c331e5e5050b2ef7b4683&query=star%20wars"
+
+        document.addEventListener('keydown', e => {
+            if (e.code == "Enter") {
+                search();
+            }
+        })
+
+        function update(url, heading){
+            
+            container.innerHTML = `<div class = 'detail'><H1>${heading}</H1></div>`
+
+            fetch(url)
+            .then(data => {
+                return data.json()
+            })
+            .then(res => {
+                if (res['results'].length == 0){
+                    container.innerHTML += "<div class = 'detail'><h1> No results found </h1></div>"
+                }
+                res['results'].forEach(movie => {
+                movie_string = JSON.stringify(movie)
+                let template = `<div class = 'detail'>
+                <img src="https://image.tmdb.org/t/p/w500${movie['poster_path']}" alt="">
+                <ul>
+
+                <li><h2>${movie['title']}</h2></li><br>
+                <li>${movie['overview']}</li><br>
+                <li>Release Date: ${movie['release_date']}</li>
+                <li>Rating: ${movie['vote_average']}/10</li>
+                <button onclick = "save(${movie['id']}, this)" class = 'addToList'>Save to watchlist</button>
+                <button onclick = "reviews(${movie['id']})" class = 'addToList'>Read Reviews</button>
+                </ul>
+                </div>`
+
+                container.innerHTML += template;
+
+                })
+            })  
+            
+        }
+
+        function search(){
+            if (query.value != "") {
+                let queryString = query.value;
+                query.value = ""
+                let url = `https://api.themoviedb.org/3/search/movie?api_key=187295f56b7c331e5e5050b2ef7b4683&query=${queryString}`
+                update(url, `Results for: '${queryString}'`)
+            }
+            
+        }
+
+        function save(movie_id, ele) {
+            var stored = JSON.parse(localStorage.getItem("watchList"))
+            let parentList = ele.parentElement
+            if (stored.includes(movie_id) == false) {
+                stored.push(movie_id)
+                console.log(stored)
+                localStorage.setItem("watchList", JSON.stringify(stored))
+                let html = parentList.innerHTML
+                parentList.innerHTML += `<br><li class = 'alert'>Added to Watchlist!</li>`
+                setTimeout(() => {
+                    parentList.innerHTML = html;
+                }, 1500)
+            }
+        }
+
+        function openWatchlist(){
+            container.innerHTML = `<div class = 'detail head'><H1>Watch List</H1><button onclick = "clearWatchList()">Clear Watchlist</button></div> `
+            var stored = JSON.parse(localStorage.getItem('watchList'))
+            console.log(stored)
+
+            stored.forEach(movie_id => {
+                let url = `https://api.themoviedb.org/3/movie/${movie_id}?api_key=187295f56b7c331e5e5050b2ef7b4683`
+                fetch(url)
+                .then(data => {
+                    return data.json()
+                })
+                .then(movie => {
+                    let template = `<div class = 'detail'>
+                 <img src="https://image.tmdb.org/t/p/w500${movie['poster_path']}" alt="">
+                 <ul>
+
+                     <li><h2>${movie['title']}</h2></li><br>
+                     <li>${movie['overview']}</li><br>
+                     <li>Release Date: ${movie['release_date']}</li>
+                     <li>Runtime: ${movie['runtime']} minutes</li>
+                     <li>Rating: ${movie['vote_average']}/10</li>
+                     <button onclick = "reviews(${movie['id']})" class = 'addToList'>Read Reviews</button>
+
+                 </ul>
+                 </div>`
+                
+                container.innerHTML += template;
+
+                })
+
+            })
+        }
+
+        function reviews(movie_id) {
+            container.innerHTML = "<div class = 'detail'><H1>Reviews</H1></div>"
+            let url = `https://api.themoviedb.org/3/movie/${movie_id}/reviews?api_key=187295f56b7c331e5e5050b2ef7b4683`
+            fetch(url)
+            .then(data => {
+                return data.json()
+            })
+            .then(res => {
+                if (res['results'].length == 0){
+                    container.innerHTML += "<div class = 'detail'><h1> No reviews found </h1></div>"
+                }
+                res['results'].forEach(review => {
+                    let template = `<div class = 'detail'>
+                    <ul>
+                        <li><h2>${review['author']}</h2></li><br>
+                        <li>${marked(review['content'])}</li><br>
+                        <li><a href = '${review['url']}'>Full Review</a></li>
+
+                    </ul>
+                    </div>`
+                    container.innerHTML += template;
+                })
+            })
+
+        }
+
+        function nowPlaying() {
+            let url = `https://api.themoviedb.org/3/movie/now_playing?api_key=187295f56b7c331e5e5050b2ef7b4683`
+            update(url, 'Now Playing in Cinemas')
+        }
+
+        function clearWatchList() {
+            localStorage.setItem('watchList', '[]')
+            openWatchlist()
+        }
+
+    </script>
+
+
+</html>
